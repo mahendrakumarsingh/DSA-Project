@@ -11,8 +11,9 @@ import Waiting from './pages/Waiting';
 import Cancellation from './pages/Cancellation';
 import DSADashboard from './pages/DSADashboard';
 
-const API_URL = '/api';
-const socket = io(window.location.origin); // Connect to same-origin backend WebSocket
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+const API_URL = BACKEND_URL ? `${BACKEND_URL}/api` : '/api';
+const socket = io(BACKEND_URL || window.location.origin); // Connect to same-origin or explicit backend WebSocket
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
