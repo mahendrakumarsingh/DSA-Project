@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import './App.css';
 import Navigation from './components/Navigation';
 import Home from './pages/Home';
@@ -11,6 +12,7 @@ import Cancellation from './pages/Cancellation';
 import DSADashboard from './pages/DSADashboard';
 
 const API_URL = '/api';
+const socket = io(window.location.origin); // Connect to same-origin backend WebSocket
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -24,9 +26,18 @@ function App() {
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 2000);
-    return () => clearInterval(interval);
-  }, [refreshFlag]);
+
+    // Realtime UI Engine using WebSockets!
+    socket.on('system_update', () => {
+      console.log('⚡ Socket event received: system_update');
+      fetchStats();
+      setRefreshFlag(prev => prev + 1); // Trigger re-renders in children pages seamlessly
+    });
+
+    return () => {
+      socket.off('system_update');
+    };
+  }, []);
 
   const fetchStats = async () => {
     try {
@@ -38,39 +49,21 @@ function App() {
   };
 
   const triggerRefresh = () => {
+    fetchStats();
     setRefreshFlag(prev => prev + 1);
   };
 
   return (
-    <div className="app-container">
+    <div className="flex bg-slate-50 dark:bg-background-dark font-sans text-slate-900 dark:text-ocean-50 min-h-screen">
       {/* Sidebar Navigation */}
       <Navigation currentPage={currentPage} setCurrentPage={setCurrentPage} />
 
       {/* Main Content Area */}
-      <main className="main-content">
-        {/* Top Stats Bar */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <span className="stat-label">Total Capacity</span>
-            <div className="stat-value">{stats.capacity}</div>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">Available Seats</span>
-            <div className="stat-value">{stats.available}</div>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">Waiting List</span>
-            <div className="stat-value">{stats.waiting}</div>
-          </div>
-          <div className="stat-card">
-            <span className="stat-label">Confirmed</span>
-            <div className="stat-value">{stats.confirmed}</div>
-          </div>
-        </div>
+      <main className="flex-1 overflow-y-auto p-8 transition-colors duration-300 relative">
 
         {/* Page Content */}
-        <div className="fade-in">
-          {currentPage === 'home' && <Home apiUrl={API_URL} onRefresh={triggerRefresh} />}
+        <div className="fade-in mt-4">
+          {currentPage === 'home' && <Home apiUrl={API_URL} onRefresh={triggerRefresh} stats={stats} />}
           {currentPage === 'booking' && <Booking apiUrl={API_URL} onRefresh={triggerRefresh} />}
           {currentPage === 'status' && <Status apiUrl={API_URL} />}
           {currentPage === 'confirmed' && <Confirmed apiUrl={API_URL} />}
